@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — MediVision AI{% endblock %}
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title">Welcome back, {{ session.username }} 👋</div>
+    <div class="page-subtitle">Here's your health prediction overview</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{{ url_for('user_predict') }}" class="btn btn-primary"><i class="fas fa-stethoscope"></i> New Prediction</a>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stats-grid">
+  <div class="stat-card orange animate-up-1">
+    <div class="stat-icon orange"><i class="fas fa-notes-medical"></i></div>
+    <div class="stat-label">Total Predictions</div>
+    <div class="stat-value orange">{{ predictions|length }}</div>
+    <div class="stat-change"><i class="fas fa-arrow-up"></i> All time</div>
+  </div>
+  <div class="stat-card blue animate-up-2">
+    <div class="stat-icon blue"><i class="fas fa-comment-medical"></i></div>
+    <div class="stat-label">Text Analyses</div>
+    <div class="stat-value blue">{{ predictions|selectattr('input_type','eq','text')|list|length }}</div>
+    <div class="stat-change" style="color:var(--info)"><i class="fas fa-keyboard"></i> Symptom input</div>
+  </div>
+  <div class="stat-card green animate-up-3">
+    <div class="stat-icon green"><i class="fas fa-x-ray"></i></div>
+    <div class="stat-label">Image Analyses</div>
+    <div class="stat-value green">{{ predictions|selectattr('input_type','eq','image')|list|length }}</div>
+    <div class="stat-change" style="color:var(--success)"><i class="fas fa-camera"></i> Medical images</div>
+  </div>
+  <div class="stat-card purple animate-up-4">
+    <div class="stat-icon purple"><i class="fas fa-percentage"></i></div>
+    <div class="stat-label">Avg Confidence</div>
+    <div class="stat-value purple">{% if predictions %}{{ "%.0f"|format(predictions|sum(attribute='confidence') / predictions|length) }}%{% else %}—{% endif %}</div>
+    <div class="stat-change" style="color:#8B5CF6"><i class="fas fa-chart-line"></i> Model accuracy</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+  <!-- Quick Actions -->
+  <div class="card animate-up-1">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-bolt" style="color:var(--orange)"></i> Quick Actions</div>
+    </div>
+    <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <a href="{{ url_for('user_predict') }}?type=text" class="quick-btn" style="text-decoration:none;background:var(--orange-pale);border-radius:12px;padding:18px;text-align:center;transition:all 0.2s;display:block;" onmouseover="this.style.background='#FFE0CC'" onmouseout="this.style.background='var(--orange-pale)'">
+        <div style="font-size:28px;margin-bottom:8px;">💬</div>
+        <div style="font-size:13px;font-weight:700;color:var(--orange);">Text Analysis</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Describe symptoms</div>
+      </a>
+      <a href="{{ url_for('user_predict') }}?type=image" style="text-decoration:none;background:#EFF6FF;border-radius:12px;padding:18px;text-align:center;transition:all 0.2s;display:block;" onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
+        <div style="font-size:28px;margin-bottom:8px;">🩻</div>
+        <div style="font-size:13px;font-weight:700;color:#3B82F6;">Image Scan</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Upload medical image</div>
+      </a>
+      <a href="{{ url_for('user_history') }}" style="text-decoration:none;background:#ECFDF5;border-radius:12px;padding:18px;text-align:center;transition:all 0.2s;display:block;" onmouseover="this.style.background='#D1FAE5'" onmouseout="this.style.background='#ECFDF5'">
+        <div style="font-size:28px;margin-bottom:8px;">📋</div>
+        <div style="font-size:13px;font-weight:700;color:#10B981;">View History</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Past predictions</div>
+      </a>
+      <div style="background:#F5F3FF;border-radius:12px;padding:18px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">🧠</div>
+        <div style="font-size:13px;font-weight:700;color:#8B5CF6;">4 Models</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">DT, RF, XGB, CNN</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Performance Preview -->
+  <div class="card animate-up-2">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-chart-bar" style="color:var(--orange)"></i> Model Performance</div>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        {% set models = [('CNN','94.7','purple'),('XGBoost','91.3','orange'),('Random Forest','87.6','blue'),('Decision Tree','78.4','green')] %}
+        {% for name, acc, color in models %}
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:13px;font-weight:600;color:var(--gray-800)">{{ name }}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--{{ color }}, var(--orange))">{{ acc }}%</span>
+          </div>
+          <div class="progress">
+            <div class="progress-fill" data-width="{{ acc }}" style="width:0%;background:{% if color=='purple' %}linear-gradient(90deg,#8B5CF6,#A78BFA){% elif color=='blue' %}linear-gradient(90deg,#3B82F6,#60A5FA){% elif color=='green' %}linear-gradient(90deg,#10B981,#34D399){% else %}linear-gradient(90deg,var(--orange),var(--orange-light)){% endif %}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Predictions -->
+<div class="card animate-up-3">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-clock" style="color:var(--orange)"></i> Recent Predictions</div>
+    <a href="{{ url_for('user_history') }}" class="btn btn-outline btn-sm">View All</a>
+  </div>
+  {% if predictions %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th><th>Input</th><th>Prediction</th><th>Confidence</th><th>Model</th><th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in predictions[:6] %}
+        <tr>
+          <td>
+            {% if p.input_type == 'text' %}
+            <span class="badge-pill badge-orange"><i class="fas fa-comment"></i> Text</span>
+            {% else %}
+            <span class="badge-pill badge-blue"><i class="fas fa-image"></i> Image</span>
+            {% endif %}
+          </td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--gray-600)">{{ p.input_data[:60] }}{% if p.input_data|length > 60 %}...{% endif %}</td>
+          <td><span style="font-weight:600;color:var(--gray-900)">{{ p.prediction }}</span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="progress" style="width:60px;"><div class="progress-fill" data-width="{{ p.confidence }}" style="width:0%"></div></div>
+              <span style="font-size:12px;font-weight:600;color:var(--orange)">{{ "%.1f"|format(p.confidence) }}%</span>
+            </div>
+          </td>
+          <td><span class="badge-pill {% if 'CNN' in p.model_used %}badge-gray{% else %}badge-green{% endif %}">{{ p.model_used }}</span></td>
+          <td style="font-size:12px;color:var(--gray-400)">{{ p.created_at[:16] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body" style="text-align:center;padding:48px;">
+    <div style="font-size:48px;margin-bottom:16px;">🩺</div>
+    <div style="font-size:16px;font-weight:600;color:var(--gray-800);margin-bottom:8px;">No predictions yet</div>
+    <div style="font-size:13px;color:var(--gray-400);margin-bottom:20px;">Start by making your first prediction</div>
+    <a href="{{ url_for('user_predict') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Make First Prediction</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
