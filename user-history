@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}My Predictions — MediVision AI{% endblock %}
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title">Prediction History</div>
+    <div class="page-subtitle">All your past AI diagnoses</div>
+  </div>
+  <a href="{{ url_for('user_predict') }}" class="btn btn-primary"><i class="fas fa-plus"></i> New Prediction</a>
+</div>
+
+<!-- Filter Bar -->
+<div class="card animate-up-1" style="margin-bottom:20px;">
+  <div class="card-body" style="padding:14px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <span style="font-size:13px;font-weight:600;color:var(--gray-600)">Filter:</span>
+    <button class="btn btn-outline btn-sm filter-btn active" data-filter="all" onclick="filterPreds('all',this)">All</button>
+    <button class="btn btn-outline btn-sm filter-btn" data-filter="text" onclick="filterPreds('text',this)"><i class="fas fa-comment"></i> Text</button>
+    <button class="btn btn-outline btn-sm filter-btn" data-filter="image" onclick="filterPreds('image',this)"><i class="fas fa-image"></i> Image</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+      <i class="fas fa-search" style="color:var(--gray-400)"></i>
+      <input type="text" id="searchInput" class="form-control" style="width:200px;padding:8px 12px;" placeholder="Search disease..." oninput="searchPreds()">
+    </div>
+  </div>
+</div>
+
+{% if predictions %}
+<div class="card animate-up-2">
+  <div class="table-wrap">
+    <table id="predTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Type</th><th>Input</th><th>Condition</th>
+          <th>Confidence</th><th>Model</th><th>Date & Time</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in predictions %}
+        <tr class="pred-row" data-type="{{ p.input_type }}" data-disease="{{ p.prediction|lower }}">
+          <td style="color:var(--gray-400);font-size:12px">#{{ loop.index }}</td>
+          <td>
+            {% if p.input_type == 'text' %}
+            <span class="badge-pill badge-orange"><i class="fas fa-comment"></i> Text</span>
+            {% else %}
+            <span class="badge-pill badge-blue"><i class="fas fa-image"></i> Image</span>
+            {% endif %}
+          </td>
+          <td style="max-width:200px;">
+            <div style="font-size:12px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ p.input_data }}">
+              {{ p.input_data[:70] }}{% if p.input_data|length > 70 %}...{% endif %}
+            </div>
+          </td>
+          <td>
+            <span style="font-weight:700;color:var(--gray-900);font-size:13px">{{ p.prediction }}</span>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="width:50px;">
+                <div class="progress"><div class="progress-fill" data-width="{{ p.confidence }}" style="width:0%"></div></div>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:{% if p.confidence >= 90 %}var(--success){% elif p.confidence >= 75 %}var(--orange){% else %}var(--warning){% endif %}">{{ "%.1f"|format(p.confidence) }}%</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge-pill {% if 'CNN' in p.model_used %}badge-gray{% elif 'XGBoost' in p.model_used %}badge-orange{% else %}badge-green{% endif %}">{{ p.model_used }}</span>
+          </td>
+          <td style="font-size:12px;color:var(--gray-400)">{{ p.created_at[:16] }}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="showDetail({{ loop.index0 }})"><i class="fas fa-eye"></i></button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card animate-up-2">
+  <div class="card-body" style="text-align:center;padding:60px;">
+    <div style="font-size:56px;margin-bottom:16px">📋</div>
+    <div style="font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:8px">No predictions yet</div>
+    <div style="font-size:13px;color:var(--gray-400);margin-bottom:24px">Your prediction history will appear here</div>
+    <a href="{{ url_for('user_predict') }}" class="btn btn-primary"><i class="fas fa-stethoscope"></i> Make First Prediction</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Detail Modal -->
+<div id="detailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;display:none;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:32px;max-width:440px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,0.15);animation:slideUp 0.3s ease;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:17px;font-weight:700;color:var(--gray-900)">Prediction Detail</div>
+      <button onclick="closeModal()" style="background:var(--gray-100);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;color:var(--gray-600)">×</button>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const predsData = {{ predictions | tojson if predictions else '[]' }};
+
+function filterPreds(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pred-row').forEach(row => {
+    row.style.display = type === 'all' || row.dataset.type === type ? '' : 'none';
+  });
+}
+function searchPreds() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.pred-row').forEach(row => {
+    row.style.display = row.dataset.disease.includes(q) ? '' : 'none';
+  });
+}
+function showDetail(idx) {
+  const p = predsData[idx];
+  document.getElementById('modalContent').innerHTML = `
+    <div style="background:var(--orange-pale);border-radius:14px;padding:20px;margin-bottom:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:900;color:var(--orange)">${p.prediction}</div>
+      <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">${p.input_type} analysis</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:var(--gray-50);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--gray-400)">Confidence</div>
+        <div style="font-size:18px;font-weight:800;color:var(--orange)">${parseFloat(p.confidence).toFixed(1)}%</div>
+      </div>
+      <div style="background:var(--gray-50);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--gray-400)">Model</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gray-900)">${p.model_used}</div>
+      </div>
+    </div>
+    <div style="background:var(--gray-50);border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px">Input Data</div>
+      <div style="font-size:12px;color:var(--gray-800);line-height:1.5">${p.input_data}</div>
+    </div>
+    <div style="font-size:11px;color:var(--gray-400);text-align:right">${p.created_at}</div>
+  `;
+  document.getElementById('detailModal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('detailModal').style.display = 'none';
+}
+document.getElementById('detailModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// CSS var fallback
+document.querySelectorAll('.filter-btn.active').forEach(b => {
+  b.style.borderColor = 'var(--orange)';
+  b.style.color = 'var(--orange)';
+  b.style.background = 'var(--orange-pale)';
+});
+</script>
+<style>
+:root{--orange:#FF6B2B;--orange-pale:#FFF0E8;}
+.filter-btn.active{border-color:var(--orange)!important;color:var(--orange)!important;background:var(--orange-pale)!important;}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+{% endblock %}
