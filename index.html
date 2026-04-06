@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediVision AI — Intelligent Disease Prediction</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --orange: #FF6B2B; --orange-light: #FF8C5A; --orange-pale: #FFF0E8;
+  --orange-dark: #E05520; --cream: #FFFAF6; --white: #FFFFFF;
+  --gray-900: #111827; --gray-600: #4B5563; --gray-400: #9CA3AF;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--cream); color: var(--gray-900); overflow-x: hidden; }
+
+/* ── HERO ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 16px 64px; display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,250,246,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,107,43,0.08);
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), var(--orange-light)); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
+.nav-logo-text { font-size: 18px; font-weight: 800; color: var(--gray-900); }
+.nav-logo-text span { color: var(--orange); }
+.nav-links { display: flex; gap: 6px; }
+.nav-link { padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; color: var(--gray-600); transition: all 0.2s; }
+.nav-link:hover { background: var(--orange-pale); color: var(--orange); }
+.nav-cta { background: linear-gradient(135deg, var(--orange), var(--orange-light)); color: white; padding: 10px 22px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; box-shadow: 0 4px 16px rgba(255,107,43,0.3); transition: all 0.2s; }
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,107,43,0.35); }
+
+hero { 
+  display: block;
+  min-height: 100vh; padding: 120px 64px 80px;
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,107,43,0.12) 0%, transparent 70%),
+              radial-gradient(ellipse 40% 40% at 90% 80%, rgba(255,107,43,0.06) 0%, transparent 70%),
+              var(--cream);
+  display: flex; align-items: center; justify-content: space-between; gap: 60px;
+}
+.hero-left { max-width: 560px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--orange-pale); border: 1px solid rgba(255,107,43,0.2);
+  color: var(--orange); padding: 8px 16px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 24px;
+  animation: fadeInDown 0.6s ease;
+}
+.hero-badge::before { content: ''; width: 8px; height: 8px; background: var(--orange); border-radius: 50%; animation: pulse 1.5s ease infinite; }
+@keyframes fadeInDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+h1 {
+  font-size: clamp(40px, 5vw, 64px); font-weight: 900; line-height: 1.1;
+  color: var(--gray-900); margin-bottom: 20px;
+  animation: slideUp 0.7s 0.1s ease both;
+}
+h1 .highlight { color: var(--orange); position: relative; display: inline-block; }
+h1 .highlight::after {
+  content: ''; position: absolute; left: 0; bottom: -4px; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--orange), var(--orange-light));
+  border-radius: 2px; transform: scaleX(0); transform-origin: left;
+  animation: underlineIn 0.8s 0.8s ease forwards;
+}
+@keyframes underlineIn { to { transform: scaleX(1); } }
+@keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+.hero-desc { font-size: 17px; color: var(--gray-600); line-height: 1.7; margin-bottom: 36px; animation: slideUp 0.7s 0.2s ease both; opacity: 0; }
+.hero-btns { display: flex; gap: 12px; flex-wrap: wrap; animation: slideUp 0.7s 0.3s ease both; opacity: 0; }
+.hero-btn-primary {
+  background: linear-gradient(135deg, var(--orange), var(--orange-light)); color: white;
+  padding: 14px 28px; border-radius: 12px; text-decoration: none;
+  font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 6px 24px rgba(255,107,43,0.35); transition: all 0.2s;
+}
+.hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(255,107,43,0.4); }
+.hero-btn-secondary {
+  border: 2px solid var(--gray-400); color: var(--gray-900); background: transparent;
+  padding: 14px 28px; border-radius: 12px; text-decoration: none;
+  font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s;
+}
+.hero-btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+
+.hero-stats { display: flex; gap: 32px; margin-top: 48px; animation: slideUp 0.7s 0.4s ease both; opacity: 0; }
+.hero-stat-val { font-size: 28px; font-weight: 900; color: var(--gray-900); }
+.hero-stat-val span { color: var(--orange); }
+.hero-stat-label { font-size: 12px; color: var(--gray-400); font-weight: 500; }
+
+/* ── FLOATING CARD ── */
+.hero-right { flex: 1; max-width: 460px; position: relative; animation: slideUp 0.8s 0.3s ease both; opacity: 0; }
+.hero-card {
+  background: white; border-radius: 24px; padding: 32px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.1), 0 4px 16px rgba(255,107,43,0.08);
+  border: 1px solid rgba(255,107,43,0.1);
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+.card-topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.red{background:#EF4444;} .dot.yellow{background:#F59E0B;} .dot.green{background:#10B981;}
+.card-title-hero { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-left: 8px; }
+
+.scan-area {
+  border: 2px dashed rgba(255,107,43,0.3); border-radius: 16px; padding: 28px;
+  text-align: center; background: var(--orange-pale); margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.scan-icon { font-size: 42px; color: var(--orange); margin-bottom: 8px; }
+.scan-label { font-size: 14px; color: var(--orange); font-weight: 600; }
+
+.result-chip {
+  background: linear-gradient(135deg, var(--orange-pale), #FFE8D6);
+  border: 1px solid rgba(255,107,43,0.2);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.result-chip-label { font-size: 12px; color: var(--gray-400); margin-bottom: 2px; }
+.result-chip-val { font-size: 18px; font-weight: 800; color: var(--orange); }
+.conf-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.conf-fill { height: 100%; width: 91%; background: linear-gradient(90deg, var(--orange), var(--orange-light)); border-radius: 3px; animation: confFill 1.5s 1s ease both; }
+@keyframes confFill { from{width:0} to{width:91%} }
+
+/* ── FEATURES ── */
+.features { padding: 80px 64px; }
+.section-badge { display: inline-block; background: var(--orange-pale); color: var(--orange); font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; }
+.section-title { font-size: 40px; font-weight: 800; color: var(--gray-900); margin-bottom: 12px; }
+.section-title span { color: var(--orange); }
+.section-desc { font-size: 16px; color: var(--gray-600); max-width: 520px; line-height: 1.7; margin-bottom: 48px; }
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.feature-card {
+  background: white; border-radius: 18px; padding: 28px;
+  border: 1px solid #F3F4F6;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.3s;
+}
+.feature-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(255,107,43,0.1); border-color: rgba(255,107,43,0.2); }
+.feature-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; }
+.feature-icon.orange { background: var(--orange-pale); color: var(--orange); }
+.feature-icon.blue { background: #EFF6FF; color: #3B82F6; }
+.feature-icon.green { background: #ECFDF5; color: #10B981; }
+.feature-icon.purple { background: #F5F3FF; color: #8B5CF6; }
+.feature-icon.pink { background: #FDF2F8; color: #EC4899; }
+.feature-icon.yellow { background: #FFFBEB; color: #F59E0B; }
+.feature-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+.feature-desc { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+
+/* ── MODELS SECTION ── */
+.models { padding: 60px 64px; background: var(--orange-pale); }
+.models-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 40px; }
+.model-card {
+  background: white; border-radius: 16px; padding: 22px;
+  text-align: center; border: 1px solid rgba(255,107,43,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.model-acc { font-size: 38px; font-weight: 900; color: var(--orange); }
+.model-name { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-top: 4px; }
+.model-type { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.acc-bar { height: 4px; background: var(--gray-200); border-radius: 2px; overflow: hidden; margin: 12px 0 0; }
+.acc-fill { height: 100%; background: linear-gradient(90deg, var(--orange), var(--orange-light)); border-radius: 2px; }
+
+/* ── CTA ── */
+.cta-section {
+  padding: 80px 64px; text-align: center;
+  background: linear-gradient(135deg, var(--gray-900) 0%, #1F1F2E 100%);
+  color: white;
+}
+.cta-section h2 { font-size: 42px; font-weight: 900; margin-bottom: 16px; }
+.cta-section h2 span { color: var(--orange); }
+.cta-section p { font-size: 16px; color: #9CA3AF; margin-bottom: 36px; }
+.cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ── FOOTER ── */
+footer { padding: 32px 64px; background: var(--gray-900); text-align: center; }
+footer p { font-size: 13px; color: #6B7280; }
+footer span { color: var(--orange); }
+
+@media (max-width: 768px) {
+  nav { padding: 12px 20px; }
+  hero { padding: 100px 20px 60px; flex-direction: column; }
+  .hero-right { max-width: 100%; }
+  .features, .models, .cta-section { padding: 60px 20px; }
+  .features-grid, .models-grid { grid-template-columns: 1fr 1fr; }
+  h1 { font-size: 36px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="nav-logo-icon"><i class="fas fa-heartbeat"></i></div>
+    <div class="nav-logo-text">Medi<span>Vision</span> AI</div>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="#features">Features</a>
+    <a class="nav-link" href="#models">Models</a>
+    <a class="nav-link" href="/login">Login</a>
+    <a class="nav-cta" href="/signup">Get Started &rarr;</a>
+  </div>
+</nav>
+
+<hero>
+  <div class="hero-left">
+    <div class="hero-badge"><i class="fas fa-circle-check"></i> Powered by 4 AI Models • 94.7% Accuracy</div>
+    <h1>Diagnose Smarter<br>with <span class="highlight">AI-Powered</span><br>Medical Vision</h1>
+    <p class="hero-desc">MediVision AI combines symptom text analysis and medical image classification to deliver fast, accurate disease predictions using Decision Tree, Random Forest, XGBoost, and CNN models.</p>
+    <div class="hero-btns">
+      <a class="hero-btn-primary" href="/signup"><i class="fas fa-stethoscope"></i> Start Diagnosing</a>
+      <a class="hero-btn-secondary" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-val"><span>94.7</span>%</div>
+        <div class="hero-stat-label">CNN Accuracy</div>
+      </div>
+      <div style="width:1px;background:#E5E7EB;"></div>
+      <div>
+        <div class="hero-stat-val"><span>4</span></div>
+        <div class="hero-stat-label">AI Models</div>
+      </div>
+      <div style="width:1px;background:#E5E7EB;"></div>
+      <div>
+        <div class="hero-stat-val"><span>20</span>+</div>
+        <div class="hero-stat-label">Diseases Detected</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="hero-card">
+      <div class="card-topbar">
+        <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+        <span class="card-title-hero">MediVision Analyzer</span>
+      </div>
+      <div class="scan-area">
+        <div class="scan-icon"><i class="fas fa-lungs"></i></div>
+        <div class="scan-label">Analyzing medical image...</div>
+        <div style="width:60%;height:4px;background:#FFD4BC;border-radius:2px;margin:12px auto 0;overflow:hidden;">
+          <div style="width:100%;height:100%;background:linear-gradient(90deg,#FF6B2B,#FF8C5A);border-radius:2px;animation:scanAnim 2s ease infinite;"></div>
+        </div>
+      </div>
+      <div class="result-chip">
+        <div>
+          <div class="result-chip-label">Predicted Condition</div>
+          <div class="result-chip-val">Psoriasis Detected</div>
+          <div class="conf-bar"><div class="conf-fill"></div></div>
+        </div>
+        <div style="text-align:right;">
+          <div class="result-chip-label">Confidence</div>
+          <div style="font-size:24px;font-weight:900;color:#FF6B2B;">91%</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;">
+        <div style="flex:1;background:#ECFDF5;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:11px;color:#6B7280;">Model Used</div>
+          <div style="font-size:13px;font-weight:700;color:#065F46;">XGBoost</div>
+        </div>
+        <div style="flex:1;background:#EFF6FF;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:11px;color:#6B7280;">Input Type</div>
+          <div style="font-size:13px;font-weight:700;color:#1E40AF;">Image + Text</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</hero>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="section-badge"><i class="fas fa-sparkles"></i> Platform Features</div>
+  <h2 class="section-title">Everything you need for<br><span>intelligent diagnosis</span></h2>
+  <p class="section-desc">A complete platform for AI-assisted medical analysis with dual input modes, multi-model support, and comprehensive analytics.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon orange"><i class="fas fa-comment-medical"></i></div>
+      <div class="feature-title">Symptom Text Analysis</div>
+      <div class="feature-desc">Describe your symptoms in natural language. Our NLP-powered models analyze and match against 20+ disease profiles.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon blue"><i class="fas fa-x-ray"></i></div>
+      <div class="feature-title">Medical Image Diagnosis</div>
+      <div class="feature-desc">Upload X-rays, retinal scans, skin images. CNN model analyzes visual patterns to detect abnormalities.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon green"><i class="fas fa-brain"></i></div>
+      <div class="feature-title">4 AI Model Ensemble</div>
+      <div class="feature-desc">Choose from Decision Tree, Random Forest, XGBoost, or CNN for each prediction with confidence scores.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon purple"><i class="fas fa-chart-bar"></i></div>
+      <div class="feature-title">Performance Analytics</div>
+      <div class="feature-desc">Real-time accuracy, precision, recall, and F1 score monitoring for all trained models.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon pink"><i class="fas fa-user-shield"></i></div>
+      <div class="feature-title">Admin Dashboard</div>
+      <div class="feature-desc">Train models, manage users, monitor system health and prediction history from a unified admin panel.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon yellow"><i class="fas fa-history"></i></div>
+      <div class="feature-title">Prediction History</div>
+      <div class="feature-desc">Complete audit trail of all predictions with input data, model used, confidence level, and timestamps.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Models -->
+<section class="models" id="models">
+  <div class="section-badge">AI Models</div>
+  <h2 class="section-title">Powered by <span>top-performing</span> models</h2>
+  <div class="models-grid">
+    <div class="model-card">
+      <div class="model-acc">78.4%</div>
+      <div class="model-name">Decision Tree</div>
+      <div class="model-type">Classical ML</div>
+      <div class="acc-bar"><div class="acc-fill" style="width:78.4%"></div></div>
+    </div>
+    <div class="model-card">
+      <div class="model-acc">87.6%</div>
+      <div class="model-name">Random Forest</div>
+      <div class="model-type">Ensemble ML</div>
+      <div class="acc-bar"><div class="acc-fill" style="width:87.6%"></div></div>
+    </div>
+    <div class="model-card">
+      <div class="model-acc">91.3%</div>
+      <div class="model-name">XGBoost</div>
+      <div class="model-type">Gradient Boosting</div>
+      <div class="acc-bar"><div class="acc-fill" style="width:91.3%"></div></div>
+    </div>
+    <div class="model-card">
+      <div class="model-acc" style="color:#8B5CF6">94.7%</div>
+      <div class="model-name">CNN</div>
+      <div class="model-type">Deep Learning</div>
+      <div class="acc-bar"><div class="acc-fill" style="width:94.7%;background:linear-gradient(90deg,#8B5CF6,#A78BFA)"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>Ready to diagnose with <span>AI</span>?</h2>
+  <p>Join MediVision AI today. Create your free account and start getting intelligent disease predictions in seconds.</p>
+  <div class="cta-btns">
+    <a class="hero-btn-primary" href="/signup"><i class="fas fa-user-plus"></i> Create Free Account</a>
+    <a href="/login" style="color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:600;border:2px solid rgba(255,255,255,0.2);display:inline-flex;align-items:center;gap:8px;font-size:15px;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,107,43,0.6)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'"><i class="fas fa-sign-in-alt"></i> Admin Login</a>
+  </div>
+</section>
+
+<footer>
+  <p>© 2024 <span>MediVision AI</span> — AI-Powered Disease Prediction Platform | For educational & research purposes only</p>
+</footer>
+
+<style>
+@keyframes scanAnim {
+  0%{transform:translateX(-100%)} 100%{transform:translateX(0)}
+}
+</style>
+</body>
+</html>
