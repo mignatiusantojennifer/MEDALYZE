@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Model Training — MediVision AI{% endblock %}
+{% block extra_head %}
+<style>
+.train-card {
+  background: linear-gradient(135deg, var(--orange-pale), #FFF5EE);
+  border: 1.5px solid rgba(255,107,43,0.2);
+  border-radius: 18px; padding: 28px; margin-bottom: 24px;
+}
+.model-train-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px; }
+.model-select-card {
+  border: 2px solid var(--gray-200); border-radius: 12px; padding: 16px;
+  cursor: pointer; transition: all 0.2s; position: relative;
+}
+.model-select-card:hover { border-color: var(--orange); background: var(--orange-pale); }
+.model-select-card.selected { border-color: var(--orange); background: var(--orange-pale); }
+.model-select-card input { position: absolute; opacity: 0; pointer-events: none; }
+.model-sel-name { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+.model-sel-desc { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+.model-sel-acc { font-size: 22px; font-weight: 800; color: var(--orange); margin-top: 8px; }
+.model-select-card.selected .check-badge { display: flex; }
+.check-badge { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; background: var(--orange); border-radius: 50%; display: none; align-items: center; justify-content: center; color: white; font-size: 10px; }
+
+/* Training Progress */
+.train-progress-wrap { display: none; }
+.train-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.step-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.step-icon.pending { background: var(--gray-100); color: var(--gray-400); }
+.step-icon.active { background: var(--orange-pale); color: var(--orange); animation: pulse 1s ease infinite; }
+.step-icon.done { background: #ECFDF5; color: var(--success); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.step-label { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.step-sub { font-size: 11px; color: var(--gray-400); }
+.step-time { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+/* Result Box */
+.train-result { display: none; background: white; border-radius: 14px; padding: 20px; margin-top: 16px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 12px; }
+.metric-box { background: var(--orange-pale); border-radius: 10px; padding: 14px; text-align: center; }
+.metric-val { font-size: 20px; font-weight: 800; color: var(--orange); }
+.metric-label { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title"><i class="fas fa-brain" style="color:var(--orange)"></i> Model Training</div>
+    <div class="page-subtitle">Train and evaluate AI disease prediction models</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Training Panel -->
+  <div>
+    <div class="card animate-up-1">
+      <div class="card-header">
+        <div class="card-title">Train a Model</div>
+        <span class="badge-pill badge-orange"><i class="fas fa-database"></i> Symptom2Disease Dataset</span>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Select Algorithm</label>
+          <div class="model-train-grid" id="trainGrid">
+            {% for name, desc, acc in [
+              ('DecisionTree','Fast, interpretable tree classifier','78.4%'),
+              ('RandomForest','Ensemble of decision trees','87.6%'),
+              ('XGBoost','Gradient boosted trees','91.3%'),
+              ('CNN','Convolutional neural network','94.7%')
+            ] %}
+            <label class="model-select-card {% if loop.first %}selected{% endif %}" onclick="selectTrain(this)">
+              <input type="radio" name="trainModel" value="{{ name }}" {% if loop.first %}checked{% endif %}>
+              <div class="check-badge"><i class="fas fa-check" style="font-size:9px"></i></div>
+              <div class="model-sel-name">{{ name }}</div>
+              <div class="model-sel-desc">{{ desc }}</div>
+              <div class="model-sel-acc">{{ acc }}</div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="form-group">
+          <label class="form-label">Dataset Configuration</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:12px">Test Split</label>
+              <select class="form-control">
+                <option>35% (default)</option><option>20%</option><option>30%</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:12px">Random State</label>
+              <input type="number" class="form-control" value="77">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="trainBtn" onclick="startTraining()">
+          <i class="fas fa-play"></i> Start Training
+        </button>
+
+        <!-- Progress -->
+        <div class="train-progress-wrap" id="trainProgress" style="margin-top:20px;">
+          <div class="divider"></div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Training Progress</div>
+          {% for step, sub in [
+            ('Loading dataset','Reading Symptom2Disease.csv...'),
+            ('Feature extraction','Vectorizing input text...'),
+            ('Model training','Fitting classifier...'),
+            ('Evaluation','Computing metrics on test set...'),
+            ('Saving model','Exporting to .pkl file...')
+          ] %}
+          <div class="train-step" id="step{{ loop.index }}">
+            <div class="step-icon pending" id="stepIcon{{ loop.index }}">{{ loop.index }}</div>
+            <div>
+              <div class="step-label">{{ step }}</div>
+              <div class="step-sub">{{ sub }}</div>
+            </div>
+            <div class="step-time" id="stepTime{{ loop.index }}"></div>
+          </div>
+          {% endfor %}
+          <div class="progress" style="margin-top:12px;">
+            <div class="progress-fill" id="trainProgressBar" style="width:0%;transition:width 0.5s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div class="train-result" id="trainResult">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <div style="width:32px;height:32px;background:#ECFDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#10B981;">✓</div>
+            <div style="font-size:15px;font-weight:700;color:var(--gray-900)">Training Complete!</div>
+          </div>
+          <div style="font-size:12px;color:var(--gray-400)" id="trainModelLabel"></div>
+          <div class="metric-grid" id="trainMetrics"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div>
+    <div class="card animate-up-2">
+      <div class="card-header">
+        <div class="card-title">Training History</div>
+        <span class="badge-pill badge-green">{{ metrics|length }} runs</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Accuracy</th><th>F1</th><th>Trained</th></tr></thead>
+          <tbody id="metricsTable">
+            {% for m in metrics %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:8px;height:8px;border-radius:50%;background:{% if 'CNN' in m.model_name %}#8B5CF6{% elif 'XGB' in m.model_name %}var(--orange){% elif 'Random' in m.model_name %}#3B82F6{% else %}#10B981{% endif %}"></div>
+                  <span style="font-weight:600;font-size:13px">{{ m.model_name }}</span>
+                </div>
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="progress" style="width:50px;"><div class="progress-fill" data-width="{{ m.accuracy }}" style="width:0%"></div></div>
+                  <span style="font-size:12px;font-weight:700;color:var(--orange)">{{ "%.1f"|format(m.accuracy) }}%</span>
+                </div>
+              </td>
+              <td><span class="badge-pill {% if m.f1score >= 90 %}badge-green{% elif m.f1score >= 80 %}badge-orange{% else %}badge-gray{% endif %}">{{ "%.1f"|format(m.f1score) }}%</span></td>
+              <td style="font-size:11px;color:var(--gray-400)">{{ m.trained_at[:10] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Dataset Info -->
+    <div class="card animate-up-3" style="margin-top:20px;">
+      <div class="card-header"><div class="card-title"><i class="fas fa-database" style="color:var(--orange)"></i> Dataset Info</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          {% for label, val, color in [('Disease Classes','20+','orange'),('Text Samples','1000+','blue'),('Image Categories','4','green'),('Features','Symptoms','purple')] %}
+          <div style="background:var(--gray-50);border-radius:10px;padding:14px;">
+            <div style="font-size:22px;font-weight:800;color:{% if color=='orange' %}var(--orange){% elif color=='blue' %}#3B82F6{% elif color=='green' %}#10B981{% else %}#8B5CF6{% endif %}">{{ val }}</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:2px;">{{ label }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function selectTrain(el) {
+  document.querySelectorAll('.model-select-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+}
+
+async function startTraining() {
+  const model = document.querySelector('.model-select-card.selected input').value;
+  document.getElementById('trainBtn').disabled = true;
+  document.getElementById('trainBtn').innerHTML = '<span style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;"></span> Training...';
+  document.getElementById('trainProgress').style.display = 'block';
+  document.getElementById('trainResult').style.display = 'none';
+
+  const steps = 5;
+  const delays = [600, 900, 1200, 800, 500];
+  for (let i = 1; i <= steps; i++) {
+    document.getElementById('stepIcon' + i).className = 'step-icon active';
+    document.getElementById('stepIcon' + i).textContent = '⟳';
+    document.getElementById('trainProgressBar').style.width = (i * 100 / steps) + '%';
+    await new Promise(r => setTimeout(r, delays[i-1]));
+    document.getElementById('stepIcon' + i).className = 'step-icon done';
+    document.getElementById('stepIcon' + i).innerHTML = '<i class="fas fa-check" style="font-size:11px"></i>';
+    document.getElementById('stepTime' + i).textContent = '✓';
+  }
+
+  const resp = await fetch('/admin/train', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'model=' + encodeURIComponent(model)
+  });
+  const data = await resp.json();
+
+  document.getElementById('trainModelLabel').textContent = model + ' trained successfully';
+  document.getElementById('trainMetrics').innerHTML = [
+    ['Accuracy', data.accuracy.toFixed(1) + '%'],
+    ['Precision', data.precision.toFixed(1) + '%'],
+    ['Recall', data.recall.toFixed(1) + '%'],
+    ['F1 Score', data.f1score.toFixed(1) + '%'],
+  ].map(([l, v]) => `<div class="metric-box"><div class="metric-val">${v}</div><div class="metric-label">${l}</div></div>`).join('');
+  document.getElementById('trainResult').style.display = 'block';
+  document.getElementById('trainBtn').disabled = false;
+  document.getElementById('trainBtn').innerHTML = '<i class="fas fa-play"></i> Train Again';
+
+  // Add to table
+  const tbody = document.getElementById('metricsTable');
+  const row = `<tr style="animation:slideUp 0.3s ease">
+    <td><span style="font-weight:600;font-size:13px">${data.model}</span></td>
+    <td><span style="font-size:12px;font-weight:700;color:var(--orange)">${data.accuracy.toFixed(1)}%</span></td>
+    <td><span class="badge-pill badge-orange">${data.f1score.toFixed(1)}%</span></td>
+    <td style="font-size:11px;color:var(--gray-400)">Just now</td>
+  </tr>`;
+  tbody.insertAdjacentHTML('afterbegin', row);
+}
+</script>
+<style>
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+{% endblock %}
