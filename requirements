@@ -1,0 +1,8 @@
+flask==3.0.0
+werkzeug==3.0.1
+numpy==1.26.4
+opencv-python-headless
+torch==2.4.1
+sentence-transformers==3.0.1
+transformers==4.41.2
+faiss-cpu
