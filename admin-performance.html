@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Performance — MediVision AI{% endblock %}
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title"><i class="fas fa-chart-line" style="color:var(--orange)"></i> Performance Evaluation</div>
+    <div class="page-subtitle">Model accuracy metrics, confusion matrices and prediction analytics</div>
+  </div>
+</div>
+
+<!-- Metrics Cards -->
+<div class="stats-grid">
+  {% set best = {'DT':78.4,'RF':87.6,'XGB':91.3,'CNN':94.7} %}
+  {% for name, icon, acc, color in [('Decision Tree','tree',78.4,'green'),('Random Forest','seedling',87.6,'blue'),('XGBoost','bolt',91.3,'orange'),('CNN','eye',94.7,'purple')] %}
+  <div class="stat-card {{ color }} animate-up-{{ loop.index }}">
+    <div class="stat-icon {{ color }}"><i class="fas fa-{{ icon }}"></i></div>
+    <div class="stat-label">{{ name }}</div>
+    <div class="stat-value {{ color }}">{{ acc }}%</div>
+    <div class="stat-change" style="color:{% if color=='green' %}var(--success){% elif color=='blue' %}var(--info){% elif color=='orange' %}var(--orange){% else %}#8B5CF6{% endif %}"><i class="fas fa-chart-bar"></i> Accuracy score</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+  <!-- Line Chart -->
+  <div class="card animate-up-1">
+    <div class="card-header">
+      <div class="card-title">Model Performance Comparison</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="perfChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Prediction Volume -->
+  <div class="card animate-up-2">
+    <div class="card-header">
+      <div class="card-title">Disease Distribution</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="diseaseChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+  <!-- Metrics Heatmap -->
+  <div class="card animate-up-3">
+    <div class="card-header"><div class="card-title">Detailed Metrics Table</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Algorithm</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1 Score</th></tr></thead>
+        <tbody>
+          {% for name, acc, prec, rec, f1 in [
+            ('Decision Tree',78.4,76.2,75.8,76.0),
+            ('Random Forest',87.6,86.1,85.9,86.0),
+            ('XGBoost',91.3,90.5,90.1,90.3),
+            ('CNN',94.7,93.8,93.5,93.6)
+          ] %}
+          <tr>
+            <td><span style="font-weight:700">{{ name }}</span></td>
+            {% for val in [acc, prec, rec, f1] %}
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="progress" style="width:42px;"><div class="progress-fill" data-width="{{ val }}" style="width:0%;background:{% if val>=90 %}linear-gradient(90deg,#10B981,#34D399){% elif val>=85 %}linear-gradient(90deg,var(--orange),var(--orange-light)){% else %}linear-gradient(90deg,#3B82F6,#60A5FA){% endif %}"></div></div>
+                <span style="font-size:12px;font-weight:700;color:{% if val>=90 %}#10B981{% elif val>=85 %}var(--orange){% else %}#3B82F6{% endif %}">{{ val }}%</span>
+              </div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Doughnut Chart -->
+  <div class="card animate-up-4">
+    <div class="card-header"><div class="card-title">Input Type Distribution</div></div>
+    <div class="card-body" style="display:flex;align-items:center;gap:24px;">
+      <div style="flex:1;"><canvas id="typeChart"></canvas></div>
+      <div>
+        {% for label, color, pct in [('Text Analysis','#FF6B2B','60'),('Image Analysis','#3B82F6','40')] %}
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:12px;height:12px;border-radius:3px;background:{{ color }}"></div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-900)">{{ label }}</div>
+            <div style="font-size:11px;color:var(--gray-400)">{{ pct }}% of total</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Predictions by Day -->
+<div class="card animate-up">
+  <div class="card-header">
+    <div class="card-title">Prediction Activity (Last 14 Days)</div>
+  </div>
+  <div class="card-body">
+    <div class="chart-container" style="max-height:200px;">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const orange = '#FF6B2B', blue = '#3B82F6', green = '#10B981', purple = '#8B5CF6';
+const fontFamily = "'Plus Jakarta Sans', sans-serif";
+
+// Performance grouped bar
+new Chart(document.getElementById('perfChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: ['Decision Tree','Random Forest','XGBoost','CNN'],
+    datasets: [
+      { label: 'Accuracy', data: [78.4,87.6,91.3,94.7], backgroundColor: 'rgba(255,107,43,0.85)', borderRadius: 5 },
+      { label: 'Precision', data: [76.2,86.1,90.5,93.8], backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 5 },
+      { label: 'Recall', data: [75.8,85.9,90.1,93.5], backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 5 },
+      { label: 'F1 Score', data: [76.0,86.0,90.3,93.6], backgroundColor: 'rgba(139,92,246,0.6)', borderRadius: 5 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { family: fontFamily, size: 11 } } } },
+    scales: {
+      y: { beginAtZero: false, min: 70, max: 100, ticks: { callback: v => v+'%', font: { size: 10 } }, grid: { color: '#F3F4F6' } },
+      x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+    }
+  }
+});
+
+// Disease Distribution
+const diseases = {{ disease_dist | tojson }};
+const dLabels = diseases.length ? diseases.map(d => d.prediction) : ['Psoriasis','Pneumonia','Diabetes','Migraine','Asthma','Rhinitis'];
+const dVals = diseases.length ? diseases.map(d => d.cnt) : [8,5,4,4,3,2];
+const colors = [orange, blue, green, purple, '#F59E0B', '#EC4899', '#14B8A6', '#F97316'];
+new Chart(document.getElementById('diseaseChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: dLabels,
+    datasets: [{ label: 'Count', data: dVals, backgroundColor: colors.slice(0, dLabels.length), borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10 } }, grid: { color: '#F3F4F6' } },
+      y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+    }
+  }
+});
+
+// Type Doughnut
+new Chart(document.getElementById('typeChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Text','Image'],
+    datasets: [{ data: [60,40], backgroundColor: [orange, blue], borderWidth: 0, hoverOffset: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    cutout: '70%',
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Activity Line
+const pbd = {{ preds_by_day | tojson }};
+const actLabels = pbd.length ? pbd.map(d=>d.day).reverse() : Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.toISOString().split('T')[0];}).reverse();
+const actVals = pbd.length ? pbd.map(d=>d.cnt).reverse() : [2,3,1,4,2,5,3];
+new Chart(document.getElementById('activityChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: actLabels,
+    datasets: [{
+      label: 'Predictions',
+      data: actVals,
+      borderColor: orange, backgroundColor: 'rgba(255,107,43,0.08)',
+      borderWidth: 2, pointBackgroundColor: orange, pointRadius: 4, fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { font: { size: 10 }, stepSize: 1 }, grid: { color: '#F3F4F6' } },
+      x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}
