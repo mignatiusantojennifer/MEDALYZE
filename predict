@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+{% block title %}Make Prediction — MediVision AI{% endblock %}
+{% block extra_head %}
+<style>
+.pred-tabs { display:flex; gap:0; background:var(--gray-100); border-radius:12px; padding:4px; margin-bottom:24px; }
+.pred-tab {
+  flex:1; padding:11px; border-radius:9px; border:none;
+  font-family:inherit; font-size:14px; font-weight:600;
+  cursor:pointer; transition:all 0.2s; color:var(--gray-600); background:transparent;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.pred-tab.active { background:white; color:var(--orange); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.pred-panel { display:none; }
+.pred-panel.active { display:block; animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.symptom-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.sym-chip {
+  padding:5px 12px; border-radius:20px; font-size:12px; font-weight:500;
+  background:var(--gray-100); color:var(--gray-600); cursor:pointer;
+  border:1.5px solid transparent; transition:all 0.15s; user-select:none;
+}
+.sym-chip:hover { background:var(--orange-pale); color:var(--orange); border-color:rgba(255,107,43,0.2); }
+.sym-chip.added { background:var(--orange-pale); color:var(--orange); border-color:rgba(255,107,43,0.35); }
+
+.model-select-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:20px; }
+.model-option {
+  border:1.5px solid var(--gray-200); border-radius:10px; padding:12px 14px;
+  cursor:pointer; transition:all 0.2s; position:relative; user-select:none;
+}
+.model-option:hover { border-color:var(--orange); background:var(--orange-pale); }
+.model-option.selected { border-color:var(--orange); background:var(--orange-pale); }
+.model-option input[type=radio] { position:absolute; opacity:0; pointer-events:none; }
+.model-option-name { font-size:13px; font-weight:700; color:var(--gray-900); }
+.model-option-acc { font-size:11px; color:var(--gray-400); margin-top:2px; }
+.model-option.selected .model-option-name { color:var(--orange); }
+.model-check { position:absolute; top:8px; right:8px; width:18px; height:18px; border-radius:50%; background:var(--orange); color:white; font-size:9px; display:none; align-items:center; justify-content:center; }
+.model-option.selected .model-check { display:flex; }
+
+/* Drop zone */
+.drop-zone {
+  border:2px dashed rgba(255,107,43,0.35); border-radius:16px;
+  padding:32px 20px; text-align:center; transition:all 0.2s;
+  background:var(--orange-pale); cursor:pointer;
+}
+.drop-zone:hover, .drop-zone.dragover { border-color:var(--orange); background:#FFE0CC; }
+.drop-zone.has-file { border-style:solid; border-color:var(--orange); background:#FFF5EE; }
+.drop-zone-icon { font-size:38px; color:var(--orange); margin-bottom:10px; }
+.drop-zone-text { font-size:14px; font-weight:600; color:var(--orange); }
+.drop-zone-hint { font-size:11px; color:var(--gray-400); margin-top:4px; }
+.preview-section { display:none; flex-direction:column; align-items:center; gap:8px; }
+.preview-section.show { display:flex; }
+.preview-img { max-height:180px; max-width:100%; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.12); }
+.preview-name { font-size:12px; color:var(--gray-600); font-weight:500; background:white; padding:4px 10px; border-radius:6px; }
+
+/* Result card */
+.result-card {
+  background:linear-gradient(135deg, var(--orange-pale), #FFF5EE);
+  border:1.5px solid rgba(255,107,43,0.2); border-radius:18px; padding:28px;
+  animation:resultPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes resultPop { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+.result-disease { font-size:26px; font-weight:900; color:var(--orange); }
+.result-conf-ring { width:88px; height:88px; position:relative; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.result-conf-ring svg { position:absolute; top:0; left:0; transform:rotate(-90deg); }
+.ring-val { font-size:20px; font-weight:800; color:var(--orange); z-index:1; }
+.result-details { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:16px; }
+.result-detail { background:white; border-radius:10px; padding:12px; text-align:center; border:1px solid rgba(255,107,43,0.1); }
+.result-detail-val { font-size:13px; font-weight:700; color:var(--gray-900); }
+.result-detail-label { font-size:11px; color:var(--gray-400); margin-top:2px; }
+
+/* Loading */
+.loading-overlay {
+  position:fixed; inset:0; background:rgba(255,250,246,0.92);
+  backdrop-filter:blur(4px); display:none; align-items:center;
+  justify-content:center; z-index:999;
+}
+.loading-overlay.show { display:flex; }
+.loading-box { background:white; border-radius:20px; padding:40px 48px; text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.1); min-width:280px; }
+.loading-spinner { width:60px; height:60px; margin:0 auto 18px; position:relative; }
+.loading-spinner::before,.loading-spinner::after { content:''; position:absolute; border-radius:50%; border:4px solid transparent; animation:lspin 1.2s ease infinite; }
+.loading-spinner::before { inset:0; border-top-color:var(--orange); }
+.loading-spinner::after { inset:10px; border-top-color:var(--orange-light); animation-delay:0.3s; }
+@keyframes lspin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+/* Empty state */
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:52px 32px; }
+.empty-icon { width:84px; height:84px; background:var(--orange-pale); border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:38px; margin-bottom:20px; animation:efloat 3s ease-in-out infinite; }
+@keyframes efloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+.warn-box { display:none; background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600; margin-top:8px; align-items:center; gap:6px; }
+.warn-box.show { display:flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title"><i class="fas fa-stethoscope" style="color:var(--orange)"></i> Disease Prediction</div>
+    <div class="page-subtitle">Describe symptoms or upload a medical image for AI diagnosis</div>
+  </div>
+  <a href="{{ url_for('user_dashboard') }}" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Dashboard</a>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div style="font-size:17px;font-weight:700;color:var(--gray-900)">Analyzing with AI...</div>
+    <div style="font-size:13px;color:var(--gray-400);margin-top:6px;" id="loadingLabel">Running prediction model</div>
+    <div style="margin-top:14px;width:200px;height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin-left:auto;margin-right:auto;">
+      <div id="loadingBar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--orange),var(--orange-light));border-radius:2px;transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- LEFT: Form -->
+  <div class="animate-up-1">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Configure Prediction</div>
+        <span class="badge-pill badge-green" style="font-size:10px;"><i class="fas fa-circle" style="font-size:7px"></i> AI Ready</span>
+      </div>
+      <div class="card-body">
+
+        <!-- Tabs -->
+        <div class="pred-tabs">
+          <button class="pred-tab {% if not result or result.type=='text' %}active{% endif %}" id="tabText" onclick="switchTab('text')">
+            <i class="fas fa-comment-medical"></i> Symptom Text
+          </button>
+          <button class="pred-tab {% if result and result.type=='image' %}active{% endif %}" id="tabImage" onclick="switchTab('image')">
+            <i class="fas fa-x-ray"></i> Medical Image
+          </button>
+        </div>
+
+        <!-- TEXT PANEL -->
+        <div class="pred-panel {% if not result or result.type=='text' %}active{% endif %}" id="panel-text">
+          <form method="POST" action="{{ url_for('user_predict') }}" id="textForm">
+            <input type="hidden" name="pred_type" value="text">
+            <div class="form-group">
+              <label class="form-label">Select Model</label>
+              <div class="model-select-grid" id="textGrid">
+                {% for name, acc in [('XGBoost','91.3% accuracy'),('RandomForest','87.6% accuracy'),('CNN','94.7% accuracy'),('DecisionTree','78.4% accuracy')] %}
+                <div class="model-option {% if loop.first %}selected{% endif %}" onclick="pickModel(this,'textGrid')">
+                  <input type="radio" name="model" value="{{ name }}" {% if loop.first %}checked{% endif %}>
+                  <div class="model-check"><i class="fas fa-check"></i></div>
+                  <div class="model-option-name">{{ name }}</div>
+                  <div class="model-option-acc">{{ acc }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quick Tags <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(click to add)</span></label>
+              <div class="symptom-chips">
+                {% for s in ['skin rash','joint pain','itchy skin','silver scaling','fever','cough','headache','fatigue','nausea','dizziness','chest pain','shortness of breath','runny nose','blurry vision','weight loss','muscle pain','sore throat','vomiting'] %}
+                <div class="sym-chip" onclick="addSym('{{ s }}',this)">{{ s }}</div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Describe Symptoms</label>
+              <textarea name="symptoms" id="sympInput" class="form-control" rows="4"
+                placeholder="e.g., I have skin rash with silver scaling on my arms and joint pain for two weeks..."
+                required>{% if result and result.type=='text' %}{{ result.input }}{% endif %}</textarea>
+              <div style="text-align:right;font-size:11px;color:var(--gray-400);margin-top:4px;"><span id="charCount">0</span> characters</div>
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;" onclick="doTextSubmit()">
+              <i class="fas fa-brain"></i> Run AI Text Analysis
+            </button>
+          </form>
+        </div>
+
+        <!-- IMAGE PANEL -->
+        <div class="pred-panel {% if result and result.type=='image' %}active{% endif %}" id="panel-image">
+          <form method="POST" action="{{ url_for('user_predict') }}" enctype="multipart/form-data" id="imageForm">
+            <input type="hidden" name="pred_type" value="image">
+            <div class="form-group">
+              <label class="form-label">Select Model</label>
+              <div class="model-select-grid" id="imgGrid">
+                {% for name, acc in [('CNN','94.7% accuracy'),('XGBoost','91.3% accuracy'),('RandomForest','87.6% accuracy'),('DecisionTree','78.4% accuracy')] %}
+                <div class="model-option {% if loop.first %}selected{% endif %}" onclick="pickModel(this,'imgGrid')">
+                  <input type="radio" name="model" value="{{ name }}" {% if loop.first %}checked{% endif %}>
+                  <div class="model-check"><i class="fas fa-check"></i></div>
+                  <div class="model-option-name">{{ name }}</div>
+                  <div class="model-option-acc">{{ acc }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Upload Medical Image</label>
+
+              <!-- Drop zone (click triggers hidden input via JS) -->
+              <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+                <div id="dzDefault">
+                  <div class="drop-zone-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                  <div class="drop-zone-text">Click to browse or drag &amp; drop</div>
+                  <div class="drop-zone-hint">PNG · JPG · JPEG · BMP &nbsp;|&nbsp; Max 16 MB</div>
+                </div>
+                <div class="preview-section" id="previewSection">
+                  <img id="previewImg" class="preview-img" src="" alt="preview">
+                  <div class="preview-name" id="previewName"></div>
+                </div>
+              </div>
+
+              <!-- File input lives OUTSIDE the drop zone so click doesn't re-open dialog when removing -->
+              <input type="file" name="image" id="fileInput"
+                accept="image/png,image/jpeg,image/jpg,image/bmp,image/webp"
+                style="display:none;" onchange="onFileChosen(this)">
+
+              <!-- Bottom bar: type hints + remove button -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+                  <span style="font-size:11px;color:var(--gray-400);font-weight:600;">Types:</span>
+                  {% for t in ['👁 Eye/Retina','🫁 Lung X-Ray','🩺 Skin','🧠 Brain MRI'] %}
+                  <span class="badge-pill badge-orange" style="font-size:10px;">{{ t }}</span>
+                  {% endfor %}
+                </div>
+                <button type="button" id="removeBtn" onclick="removeFile()"
+                  style="display:none;background:var(--danger);color:white;border:none;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:4px;">
+                  <i class="fas fa-times"></i> Remove
+                </button>
+              </div>
+
+              <div class="warn-box" id="warnBox">
+                <i class="fas fa-exclamation-triangle"></i> <span id="warnText">Please select an image before analyzing.</span>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;" onclick="doImageSubmit()">
+              <i class="fas fa-microscope"></i> Analyze Medical Image
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Result -->
+  <div class="animate-up-2">
+    {% if result %}
+    <div class="result-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <div style="width:40px;height:40px;background:var(--orange);border-radius:11px;display:flex;align-items:center;justify-content:center;color:white;font-size:17px;flex-shrink:0;">
+          <i class="fas fa-{{ 'comment-medical' if result.type == 'text' else 'x-ray' }}"></i>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:0.6px;">AI Diagnosis Result</div>
+          <div style="font-size:11px;color:var(--gray-400);">{{ result.type|capitalize }} analysis · {{ result.model }}</div>
+        </div>
+        <span class="badge-pill badge-green" style="margin-left:auto;font-size:10px;"><i class="fas fa-check-circle"></i> Complete</span>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+        <div>
+          <div class="result-disease">{{ result.disease }}</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:3px;">Detected with {{ result.confidence }}% confidence</div>
+          <div style="margin-top:10px;height:6px;background:#FFE0CC;border-radius:3px;overflow:hidden;width:180px;">
+            <div style="height:100%;width:{{ result.confidence }}%;background:linear-gradient(90deg,var(--orange),var(--orange-light));border-radius:3px;"></div>
+          </div>
+        </div>
+        <div class="result-conf-ring">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle cx="44" cy="44" r="36" fill="none" stroke="#FFE0CC" stroke-width="8"/>
+            <circle cx="44" cy="44" r="36" fill="none" stroke="url(#cg)" stroke-width="8"
+              stroke-dasharray="{{ (result.confidence / 100 * 226.19)|round }},226.19" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#FF6B2B"/>
+                <stop offset="100%" stop-color="#FF8C5A"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="ring-val">{{ result.confidence|int }}%</div>
+        </div>
+      </div>
+
+      <div class="result-details">
+        <div class="result-detail">
+          <div class="result-detail-val">{{ result.model }}</div>
+          <div class="result-detail-label">Model</div>
+        </div>
+        <div class="result-detail">
+          <div class="result-detail-val">{{ result.type|capitalize }}</div>
+          <div class="result-detail-label">Input Type</div>
+        </div>
+        <div class="result-detail">
+          <div class="result-detail-val" style="color:{% if result.confidence >= 90 %}var(--success){% elif result.confidence >= 75 %}var(--orange){% else %}var(--warning){% endif %}">{{ result.confidence|int }}%</div>
+          <div class="result-detail-label">Confidence</div>
+        </div>
+      </div>
+
+      {% if result.type == 'image' and result.img_url %}
+      <div style="margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,107,43,0.15);max-height:220px;">
+        <img src="{{ result.img_url }}" alt="Analyzed image" style="width:100%;height:220px;object-fit:cover;display:block;">
+      </div>
+      {% endif %}
+
+      <div style="background:white;border-radius:12px;padding:14px 16px;margin-top:14px;border-left:4px solid var(--orange);">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:4px;"><i class="fas fa-shield-alt" style="color:var(--orange)"></i> Medical Disclaimer</div>
+        <div style="font-size:12px;color:var(--gray-600);line-height:1.6;">This AI prediction is for <strong>informational purposes only</strong>. Always consult a licensed medical professional for proper diagnosis and treatment.</div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <a href="{{ url_for('user_predict') }}" class="btn btn-outline btn-sm" style="flex:1;justify-content:center;"><i class="fas fa-redo"></i> New Analysis</a>
+        <a href="{{ url_for('user_history') }}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;"><i class="fas fa-history"></i> History</a>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="card" style="min-height:440px;display:flex;align-items:center;justify-content:center;">
+      <div class="empty-state">
+        <div class="empty-icon">🩺</div>
+        <div style="font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Ready to Analyze</div>
+        <div style="font-size:13px;color:var(--gray-400);line-height:1.7;max-width:270px;">
+          Use <strong>Symptom Text</strong> to describe how you feel,
+          or <strong>Medical Image</strong> to upload an X-ray, MRI, or skin photo.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:22px;flex-wrap:wrap;justify-content:center;">
+          {% for d,c in [('Psoriasis','orange'),('Pneumonia','blue'),('Melanoma','orange'),('Brain Tumor','gray'),('Glaucoma','green')] %}
+          <span class="badge-pill badge-{{ c }}">{{ d }}</span>
+          {% endfor %}
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--gray-400);">& 15+ more diseases detected</div>
+        <div style="margin-top:24px;display:flex;gap:10px;">
+          <button class="btn btn-primary btn-sm" onclick="switchTab('text')"><i class="fas fa-comment-medical"></i> Text Mode</button>
+          <button class="btn btn-outline btn-sm" onclick="switchTab('image')"><i class="fas fa-x-ray"></i> Image Mode</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.pred-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pred-panel').forEach(p => p.classList.remove('active'));
+  const capTab = tab.charAt(0).toUpperCase() + tab.slice(1);
+  document.getElementById('tab' + capTab)?.classList.add('active');
+  document.getElementById('panel-' + tab)?.classList.add('active');
+}
+
+// ── MODEL SELECTION ─────────────────────────────────────────────────────────
+function pickModel(el, gridId) {
+  document.querySelectorAll('#' + gridId + ' .model-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input[type=radio]').checked = true;
+}
+
+// ── SYMPTOM CHIPS ───────────────────────────────────────────────────────────
+function addSym(sym, chip) {
+  const ta = document.getElementById('sympInput');
+  if (!ta) return;
+  chip.classList.toggle('added');
+  if (chip.classList.contains('added')) {
+    ta.value = (ta.value.trim() ? ta.value.trim() + ', ' : '') + sym;
+  } else {
+    const rx = new RegExp('(,\\s*)?' + sym.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(\\s*,)?', 'g');
+    ta.value = ta.value.replace(rx, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',');
+  }
+  document.getElementById('charCount').textContent = ta.value.length;
+}
+
+const sympTA = document.getElementById('sympInput');
+if (sympTA) {
+  sympTA.addEventListener('input', () => { document.getElementById('charCount').textContent = sympTA.value.length; });
+  document.getElementById('charCount').textContent = sympTA.value.length;
+}
+
+// ── FILE INPUT TRIGGER ──────────────────────────────────────────────────────
+function triggerFileInput() {
+  document.getElementById('fileInput').click();
+}
+
+// ── FILE CHOSEN ─────────────────────────────────────────────────────────────
+function onFileChosen(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  // Type check
+  const ok = ['image/png','image/jpeg','image/jpg','image/bmp','image/webp'];
+  if (!ok.includes(file.type)) {
+    showWarn('Please upload a valid image: PNG, JPG, JPEG, or BMP.');
+    input.value = ''; return;
+  }
+  // Size check (16 MB)
+  if (file.size > 16 * 1024 * 1024) {
+    showWarn('Image is too large. Please upload a file under 16 MB.');
+    input.value = ''; return;
+  }
+  hideWarn();
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('previewName').textContent = file.name + ' · ' + (file.size / 1024).toFixed(0) + ' KB';
+    document.getElementById('dzDefault').style.display = 'none';
+    document.getElementById('previewSection').classList.add('show');
+    document.getElementById('dropZone').classList.add('has-file');
+    const rb = document.getElementById('removeBtn');
+    rb.style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── REMOVE FILE ─────────────────────────────────────────────────────────────
+function removeFile() {
+  document.getElementById('fileInput').value = '';
+  document.getElementById('previewImg').src = '';
+  document.getElementById('previewName').textContent = '';
+  document.getElementById('previewSection').classList.remove('show');
+  document.getElementById('dzDefault').style.display = 'block';
+  document.getElementById('dropZone').classList.remove('has-file');
+  document.getElementById('removeBtn').style.display = 'none';
+  hideWarn();
+}
+
+// ── DRAG AND DROP ───────────────────────────────────────────────────────────
+const dz = document.getElementById('dropZone');
+if (dz) {
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+  dz.addEventListener('dragleave', e => { if (!dz.contains(e.relatedTarget)) dz.classList.remove('dragover'); });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('fileInput').files = dt.files;
+      } catch(_) {}
+      onFileChosen(document.getElementById('fileInput'));
+    }
+  });
+}
+
+// ── SUBMIT: TEXT ────────────────────────────────────────────────────────────
+function doTextSubmit() {
+  const ta = document.getElementById('sympInput');
+  if (!ta.value.trim() || ta.value.trim().length < 5) {
+    ta.style.borderColor = 'var(--danger)';
+    ta.focus();
+    setTimeout(() => ta.style.borderColor = '', 2500);
+    return;
+  }
+  const model = document.querySelector('#textGrid .model-option.selected .model-option-name')?.textContent || 'AI';
+  startLoading('Running ' + model + ' text analysis...');
+  document.getElementById('textForm').submit();
+}
+
+// ── SUBMIT: IMAGE ───────────────────────────────────────────────────────────
+function doImageSubmit() {
+  const inp = document.getElementById('fileInput');
+  if (!inp.files || !inp.files.length || !inp.files[0]) {
+    showWarn('Please select a medical image before running analysis.');
+    document.getElementById('dropZone').style.borderColor = 'var(--danger)';
+    setTimeout(() => document.getElementById('dropZone').style.borderColor = '', 2500);
+    return;
+  }
+  hideWarn();
+  const model = document.querySelector('#imgGrid .model-option.selected .model-option-name')?.textContent || 'AI';
+  startLoading('Running ' + model + ' image analysis...');
+  document.getElementById('imageForm').submit();
+}
+
+// ── LOADING ─────────────────────────────────────────────────────────────────
+function startLoading(label) {
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingLabel').textContent = label;
+  let w = 0;
+  const bar = document.getElementById('loadingBar');
+  const iv = setInterval(() => {
+    w = Math.min(w + Math.random() * 18, 88);
+    bar.style.width = w + '%';
+    if (w >= 88) clearInterval(iv);
+  }, 250);
+}
+
+// ── WARNINGS ────────────────────────────────────────────────────────────────
+function showWarn(msg) {
+  const b = document.getElementById('warnBox');
+  document.getElementById('warnText').textContent = msg;
+  b.classList.add('show');
+}
+function hideWarn() { document.getElementById('warnBox')?.classList.remove('show'); }
+
+// ── AUTO SWITCH TAB ──────────────────────────────────────────────────────────
+{% if result and result.type == 'image' %}
+switchTab('image');
+{% endif %}
+</script>
+{% endblock %}
