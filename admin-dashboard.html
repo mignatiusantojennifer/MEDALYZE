@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — MediVision AI{% endblock %}
+{% block content %}
+<div class="topbar animate-up">
+  <div>
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-subtitle">System overview & model performance</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{{ url_for('admin_train') }}" class="btn btn-primary"><i class="fas fa-brain"></i> Train Models</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card orange animate-up-1">
+    <div class="stat-icon orange"><i class="fas fa-users"></i></div>
+    <div class="stat-label">Total Users</div>
+    <div class="stat-value orange">{{ total_users }}</div>
+    <div class="stat-change"><i class="fas fa-user-plus"></i> Registered patients</div>
+  </div>
+  <div class="stat-card blue animate-up-2">
+    <div class="stat-icon blue"><i class="fas fa-notes-medical"></i></div>
+    <div class="stat-label">Total Predictions</div>
+    <div class="stat-value blue">{{ total_preds }}</div>
+    <div class="stat-change" style="color:var(--info)"><i class="fas fa-chart-line"></i> All time</div>
+  </div>
+  <div class="stat-card green animate-up-3">
+    <div class="stat-icon green"><i class="fas fa-robot"></i></div>
+    <div class="stat-label">Active Models</div>
+    <div class="stat-value green">4</div>
+    <div class="stat-change" style="color:var(--success)"><i class="fas fa-check-circle"></i> DT, RF, XGB, CNN</div>
+  </div>
+  <div class="stat-card purple animate-up-4">
+    <div class="stat-icon purple"><i class="fas fa-tachometer-alt"></i></div>
+    <div class="stat-label">Best Accuracy</div>
+    <div class="stat-value purple">94.7%</div>
+    <div class="stat-change" style="color:#8B5CF6"><i class="fas fa-brain"></i> CNN Model</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+  <!-- Model Metrics Chart -->
+  <div class="card animate-up-1">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-chart-bar" style="color:var(--orange)"></i> Model Comparison</div>
+      <a href="{{ url_for('admin_performance') }}" class="btn btn-outline btn-sm">Details</a>
+    </div>
+    <div class="card-body">
+      <div class="chart-container">
+        <canvas id="modelChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Latest Model Metrics Table -->
+  <div class="card animate-up-2">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-clipboard-list" style="color:var(--orange)"></i> Latest Metrics</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>F1 Score</th></tr>
+        </thead>
+        <tbody>
+          {% for m in metrics[:6] %}
+          <tr>
+            <td><span style="font-weight:600">{{ m.model_name }}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="progress" style="width:50px;"><div class="progress-fill" data-width="{{ m.accuracy }}" style="width:0%"></div></div>
+                <span style="font-size:12px;font-weight:700;color:var(--orange)">{{ "%.1f"|format(m.accuracy) }}%</span>
+              </div>
+            </td>
+            <td><span style="font-size:12px;font-weight:600;color:var(--gray-700)">{{ "%.1f"|format(m.precision) }}%</span></td>
+            <td>
+              <span class="badge-pill {% if m.f1score >= 90 %}badge-green{% elif m.f1score >= 80 %}badge-orange{% else %}badge-gray{% endif %}">
+                {{ "%.1f"|format(m.f1score) }}%
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Recent Predictions -->
+  <div class="card animate-up-3">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-stream" style="color:var(--orange)"></i> Recent Predictions</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>User</th><th>Type</th><th>Condition</th><th>Conf.</th></tr></thead>
+        <tbody>
+          {% for p in recent %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;background:var(--orange-pale);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--orange)">{{ p.username[0].upper() }}</div>
+                <span style="font-size:13px;font-weight:500">{{ p.username }}</span>
+              </div>
+            </td>
+            <td>
+              {% if p.input_type == 'text' %}
+              <span class="badge-pill badge-orange" style="font-size:10px"><i class="fas fa-comment"></i> Text</span>
+              {% else %}
+              <span class="badge-pill badge-blue" style="font-size:10px"><i class="fas fa-image"></i> Img</span>
+              {% endif %}
+            </td>
+            <td><span style="font-weight:600;font-size:12px">{{ p.prediction }}</span></td>
+            <td><span style="font-size:12px;font-weight:700;color:var(--orange)">{{ "%.0f"|format(p.confidence) }}%</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Radar Chart -->
+  <div class="card animate-up-4">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-radar" style="color:var(--orange)"></i> Model Radar</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container">
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// Bar Chart - Model Comparison
+const ctx1 = document.getElementById('modelChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'bar',
+  data: {
+    labels: ['Decision Tree', 'Random Forest', 'XGBoost', 'CNN'],
+    datasets: [
+      { label: 'Accuracy', data: [78.4, 87.6, 91.3, 94.7], backgroundColor: 'rgba(255,107,43,0.8)', borderRadius: 6 },
+      { label: 'F1 Score', data: [76.0, 86.0, 90.3, 93.6], backgroundColor: 'rgba(255,140,90,0.5)', borderRadius: 6 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { family: 'Plus Jakarta Sans', size: 12 } } } },
+    scales: {
+      y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#F3F4F6' } },
+      x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+    }
+  }
+});
+
+// Radar Chart
+const ctx2 = document.getElementById('radarChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'radar',
+  data: {
+    labels: ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'Speed'],
+    datasets: [
+      { label: 'XGBoost', data: [91.3, 90.5, 90.1, 90.3, 82], borderColor: '#FF6B2B', backgroundColor: 'rgba(255,107,43,0.15)', borderWidth: 2, pointBackgroundColor: '#FF6B2B' },
+      { label: 'CNN', data: [94.7, 93.8, 93.5, 93.6, 65], borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.15)', borderWidth: 2, pointBackgroundColor: '#8B5CF6' },
+      { label: 'Random Forest', data: [87.6, 86.1, 85.9, 86.0, 90], borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointBackgroundColor: '#3B82F6' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { family: 'Plus Jakarta Sans', size: 11 } } } },
+    scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 25, font: { size: 10 } }, grid: { color: '#F3F4F6' } } }
+  }
+});
+</script>
+{% endblock %}
